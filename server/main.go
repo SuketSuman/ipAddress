@@ -3,43 +3,45 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net"
+	"log"
 	"net/http"
 )
 
-type IPv6Response struct {
-	IPAddress string `json:"ip_address"`
+type Location struct {
+	CountryName string  `json:"country_name"`
+	RegionName  string  `json:"region_name"`
+	CityName    string  `json:"city_name"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
 }
 
 func main() {
-	http.HandleFunc("/ipv6", ipv6Handler)
-	http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/location", getLocation)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func ipv6Handler(w http.ResponseWriter, r *http.Request) {
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "Error: ", err.Error())
-		return
+func getLocation(w http.ResponseWriter, r *http.Request) {
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ip = r.RemoteAddr
 	}
 
-	ipv6 := net.ParseIP(ip)
-	if ipv6 == nil || ipv6.To4() != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "Error: IP address is not IPv6")
+	url := fmt.Sprintf("https://ipapi.co/%s/json/", ip)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer resp.Body.Close()
 
-	response := IPv6Response{IPAddress: ipv6.String()}
-	jsonResponse, err := json.Marshal(response)
+	var loc Location
+	err = json.NewDecoder(resp.Body).Decode(&loc)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "Error: failed to encode response as JSON")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
+	json.NewEncoder(w).Encode(loc)
 }
