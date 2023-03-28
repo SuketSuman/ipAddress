@@ -2,54 +2,44 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"net"
 	"net/http"
 )
 
-type ApiResponse struct {
-	IPv string `json:"ipv"`
+type IPv6Response struct {
+	IPAddress string `json:"ip_address"`
 }
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Request-Method", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, GET")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-
-		// Retrieve IPv6 address from ip6.me API
-		resp, err := http.Get("http://ip6.me/api/")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// Parse response body and create API response
-		// body1 := strings.Split(string(body), "Pv6,")
-		// body2 := strings.Split(string(body1[1]), ",v1")
-		apiResponse := ApiResponse{IPv: string(body)}
-
-		// Marshal API response to JSON
-		jsonResponse, err := json.Marshal(apiResponse)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// Set response content type to JSON
-		w.Header().Set("Content-Type", "application/json")
-
-		// Write JSON response to response body
-		w.Write(jsonResponse)
-	})
-
+	http.HandleFunc("/ipv6", ipv6Handler)
 	http.ListenAndServe(":8080", nil)
+}
+
+func ipv6Handler(w http.ResponseWriter, r *http.Request) {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Error: ", err.Error())
+		return
+	}
+
+	ipv6 := net.ParseIP(ip)
+	if ipv6 == nil || ipv6.To4() != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Error: IP address is not IPv6")
+		return
+	}
+
+	response := IPv6Response{IPAddress: ipv6.String()}
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "Error: failed to encode response as JSON")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
 }
