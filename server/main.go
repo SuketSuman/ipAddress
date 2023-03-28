@@ -7,7 +7,7 @@ import (
 )
 
 type ApiResponse struct {
-	IPv6 string `json:"ipv6"`
+	IPv string `json:"ipv"`
 }
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 		// Parse response body and create API response
 		// body1 := strings.Split(string(body), "Pv6,")
 		// body2 := strings.Split(string(body1[1]), ",v1")
-		apiResponse := ApiResponse{IPv6: string(body)}
+		apiResponse := ApiResponse{IPv: string(body)}
 
 		// Marshal API response to JSON
 		jsonResponse, err := json.Marshal(apiResponse)
