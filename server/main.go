@@ -34,9 +34,9 @@ func main() {
 		}
 
 		// Parse response body and create API response
-		body1 := strings.Split(string(body), "Pv6,")
-		body2 := strings.Split(string(body1[1]), ",v1")
-		apiResponse := ApiResponse{IPv6: string(body2[0])}
+		// body1 := strings.Split(string(body), "Pv6,")
+		// body2 := strings.Split(string(body1[1]), ",v1")
+		apiResponse := ApiResponse{IPv6: string(body)}
 
 		// Marshal API response to JSON
 		jsonResponse, err := json.Marshal(apiResponse)
